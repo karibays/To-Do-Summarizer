@@ -7,6 +7,7 @@ class Task(models.Model):
         User, on_delete=models.CASCADE, null=True, blank=True)
     title = models.CharField(max_length=150, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
+    summarized_description = models.TextField(blank=True, null=True)
     complete = models.BooleanField(default=False)
     create = models.DateTimeField(auto_now_add=True)
 

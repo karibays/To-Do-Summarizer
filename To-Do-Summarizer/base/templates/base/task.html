@@ -1,0 +1,11 @@
+{% extends 'base/main.html' %} {% block content %}
+
+<div class="header-bar">
+    <a href="{% url 'tasks' %}">&#8592; Go Back</a>
+</div>
+
+<h1>ID:</h1> <h3>{{ task.id }}</h3>
+<h1>Task:</h1> <h3>{{ task }}</h3>
+<h1>Description:</h1> <h3>{{ task.description  }}</h3>
+<h1>Summarized:</h1> <h3>{{ task.summarized_description  }}</h3>
+{% endblock content %}

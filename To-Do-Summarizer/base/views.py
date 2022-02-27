@@ -1,4 +1,4 @@
-from django.shortcuts import render, HttpResponse, redirect
+from django.shortcuts import redirect
 from django.views.generic.list import ListView
 from django.views.generic.detail import DetailView
 from django.views.generic.edit import CreateView, UpdateView, DeleteView, FormView
@@ -8,48 +8,54 @@ from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from base.models import Task
-# from transformers import pipeline
+from transformers import pipeline
+from bs4 import BeautifulSoup
+import requests
+
+def foo(lol):
+    # URL = "https://towardsdatascience.com/a-bayesian-take-on-model-regularization-9356116b6457"
+    # URL = "https://hackernoon.com/will-the-game-stop-with-gamestop-or-is-this-just-the-beginning-2j1x32aa"
+    # r = requests.get(URL)
+    # soup = BeautifulSoup(r.text, 'html.parser')
+    # results = soup.find_all(['h1', 'p'])
+    # text = [result.text for result in results]
+    # ARTICLE = ' '.join(text)
+
+    summarizer = pipeline("summarization")
+
+    text = []
+        # "My name is Karibay Sanzhar. I am 18 years old. I am from pavlodar. I am future data scientist. I have a family. My mom's name is Aisulu and sister's Assem."]
+
+    text.append(lol)
+    ARTICLE = ' '.join(text)
+
+    max_chunk = 500
+    ARTICLE = ARTICLE.replace('.', '.<eos>')
+    ARTICLE = ARTICLE.replace('?', '?<eos>')
+    ARTICLE = ARTICLE.replace('!', '!<eos>')
+
+    sentences = ARTICLE.split('<eos>')
+    current_chunk = 0
+    chunks = []
+    for sentence in sentences:
+        if len(chunks) == current_chunk + 1:
+            if len(chunks[current_chunk]) + len(sentence.split(' ')) <= max_chunk:
+                chunks[current_chunk].extend(sentence.split(' '))
+            else:
+                current_chunk += 1
+                chunks.append(sentence.split(' '))
+        else:
+            print(current_chunk)
+            chunks.append(sentence.split(' '))
+
+    for chunk_id in range(len(chunks)):
+        chunks[chunk_id] = ' '.join(chunks[chunk_id])
+
+    res = summarizer(chunks, max_length=120, min_length=30, do_sample=False)
+    text = ' '.join([summ['summary_text'] for summ in res])
+    return text
 
 
-
-# def foo():
-#     summarizer = pipeline("summarization")
-#
-#     text = [
-#         "My name is Karibay Sanzhar. I am 18 years old. I am from pavlodar. I am future data scientist. I have a family. My mom's name is Aisulu and sister's Assem."]
-#     ARTICLE = ' '.join(text)
-#
-#     max_chunk = 500
-#     ARTICLE = ARTICLE.replace('.', '.<eos>')
-#     ARTICLE = ARTICLE.replace('?', '?<eos>')
-#     ARTICLE = ARTICLE.replace('!', '!<eos>')
-#
-#     sentences = ARTICLE.split('<eos>')
-#     current_chunk = 0
-#     chunks = []
-#     for sentence in sentences:
-#         if len(chunks) == current_chunk + 1:
-#             if len(chunks[current_chunk]) + len(sentence.split(' ')) <= max_chunk:
-#                 chunks[current_chunk].extend(sentence.split(' '))
-#             else:
-#                 current_chunk += 1
-#                 chunks.append(sentence.split(' '))
-#         else:
-#             print(current_chunk)
-#             chunks.append(sentence.split(' '))
-#
-#     for chunk_id in range(len(chunks)):
-#         chunks[chunk_id] = ' '.join(chunks[chunk_id])
-#
-#     res = summarizer(chunks, max_length=120, min_length=30, do_sample=False)
-#     text = ' '.join([summ['summary_text'] for summ in res])
-#     print(text)
-
-
-def test():
-    return HttpResponse("Hello World")
-
-# --------------------------------------------------
 class CustomLoginView(LoginView):
     template_name = 'base/login.html'
     fields = '__all__'
@@ -97,6 +103,16 @@ class TaskList(LoginRequiredMixin, ListView):
 
 class TaskDetail(LoginRequiredMixin, DetailView):
     model = Task
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        test = Task.objects.get(pk=self.kwargs['pk'])
+        test.summarized_description = foo(test.description)
+        test.save()
+
+        return context
+
     context_object_name = 'task'
     template_name = 'base/task.html'
 
@@ -113,7 +129,7 @@ class TaskCreate(LoginRequiredMixin, CreateView):
 
 class TaskUpdate(LoginRequiredMixin, UpdateView):
     model = Task
-    fields = ['title', 'description', 'complete']
+    fields = ['title', 'description', 'summarized_description', 'complete']
     success_url = reverse_lazy('tasks')
 
 
